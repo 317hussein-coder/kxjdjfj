@@ -31,27 +31,20 @@ jobs:
           set -euo pipefail
           sdkmanager "ndk;27.2.12479018" "platforms;android-36" "build-tools;36.0.0"
 
-      # Qt 6.7+ Android packages are published under host "all_os", not "linux".
-      # Qt Android builds also require the matching Linux desktop Qt tools.
-      - name: Install Qt desktop tools
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.3'
-          host: 'linux'
-          target: 'desktop'
-          arch: 'gcc_64'
-          modules: 'qtdeclarative qtshadertools'
-          cache: true
-
-      - name: Install Qt for Android
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.3'
-          host: 'all_os'
-          target: 'android'
-          arch: 'android_arm64_v8a'
-          modules: 'qtdeclarative qtshadertools'
-          cache: true
+      # Qt 6.7+ Android packages use host "all_os". --autodesktop installs
+      # the matching Linux host tools required by Qt's Android CMake toolchain.
+      - name: Install Qt for Android and host tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m pip install --disable-pip-version-check 'aqtinstall==3.3.*'
+          mkdir -p "$RUNNER_TEMP/Qt"
+          python3 -m aqt install-qt all_os android 6.8.3 android_arm64_v8a \
+            --modules qtdeclarative qtshadertools \
+            --autodesktop \
+            --outputdir "$RUNNER_TEMP/Qt"
+          echo "QT_ROOT_DIR=$RUNNER_TEMP/Qt/6.8.3/android_arm64_v8a" >> "$GITHUB_ENV"
+          echo "QT_HOST_PATH=$RUNNER_TEMP/Qt/6.8.3/gcc_64" >> "$GITHUB_ENV"
 
       - name: Prepare libmpv headers and Android shared libraries
         shell: bash
