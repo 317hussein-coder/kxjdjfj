@@ -112,6 +112,71 @@ void PlayerCore::setSpeed(double value)
     emit speedChanged();
 }
 
+void PlayerCore::action(const QString &name)
+{
+    if (name == QStringLiteral("mute")) command({QStringLiteral("cycle"), QStringLiteral("mute")});
+    else if (name == QStringLiteral("screenshot")) command({QStringLiteral("screenshot"), QStringLiteral("video")});
+    else if (name == QStringLiteral("screenshot-subtitles")) command({QStringLiteral("screenshot"), QStringLiteral("subtitles")});
+    else if (name == QStringLiteral("aspect-auto")) command({QStringLiteral("set"), QStringLiteral("video-aspect-override"), QStringLiteral("no")});
+    else if (name == QStringLiteral("aspect-16-9")) command({QStringLiteral("set"), QStringLiteral("video-aspect-override"), QStringLiteral("16:9")});
+    else if (name == QStringLiteral("aspect-4-3")) command({QStringLiteral("set"), QStringLiteral("video-aspect-override"), QStringLiteral("4:3")});
+    else if (name == QStringLiteral("rotate")) command({QStringLiteral("cycle-values"), QStringLiteral("video-rotate"), QStringLiteral("0"), QStringLiteral("90"), QStringLiteral("180"), QStringLiteral("270")});
+    else if (name == QStringLiteral("deinterlace")) command({QStringLiteral("cycle"), QStringLiteral("deinterlace")});
+    else if (name == QStringLiteral("loop")) command({QStringLiteral("cycle-values"), QStringLiteral("loop-file"), QStringLiteral("inf"), QStringLiteral("no")});
+    else if (name == QStringLiteral("next")) command({QStringLiteral("playlist-next"), QStringLiteral("weak")});
+    else if (name == QStringLiteral("previous")) command({QStringLiteral("playlist-prev"), QStringLiteral("weak")});
+    else if (name == QStringLiteral("frame-forward")) command({QStringLiteral("frame-step")});
+    else if (name == QStringLiteral("frame-back")) command({QStringLiteral("frame-back-step")});
+    else if (name == QStringLiteral("subtitle-delay-plus")) adjust(QStringLiteral("sub-delay"), 0.25);
+    else if (name == QStringLiteral("subtitle-delay-minus")) adjust(QStringLiteral("sub-delay"), -0.25);
+    else if (name == QStringLiteral("audio-delay-plus")) adjust(QStringLiteral("audio-delay"), 0.1);
+    else if (name == QStringLiteral("audio-delay-minus")) adjust(QStringLiteral("audio-delay"), -0.1);
+    else if (name == QStringLiteral("subtitle-size-plus")) adjust(QStringLiteral("sub-scale"), 0.1);
+    else if (name == QStringLiteral("subtitle-size-minus")) adjust(QStringLiteral("sub-scale"), -0.1);
+    else if (name == QStringLiteral("subtitle-up")) adjust(QStringLiteral("sub-pos"), -2);
+    else if (name == QStringLiteral("subtitle-down")) adjust(QStringLiteral("sub-pos"), 2);
+    else if (name == QStringLiteral("brightness-plus")) adjust(QStringLiteral("brightness"), 5);
+    else if (name == QStringLiteral("brightness-minus")) adjust(QStringLiteral("brightness"), -5);
+    else if (name == QStringLiteral("contrast-plus")) adjust(QStringLiteral("contrast"), 5);
+    else if (name == QStringLiteral("contrast-minus")) adjust(QStringLiteral("contrast"), -5);
+    else if (name == QStringLiteral("saturation-plus")) adjust(QStringLiteral("saturation"), 5);
+    else if (name == QStringLiteral("saturation-minus")) adjust(QStringLiteral("saturation"), -5);
+    else if (name == QStringLiteral("gamma-plus")) adjust(QStringLiteral("gamma"), 5);
+    else if (name == QStringLiteral("gamma-minus")) adjust(QStringLiteral("gamma"), -5);
+    else if (name == QStringLiteral("reset-picture")) {
+        command({QStringLiteral("set"), QStringLiteral("brightness"), QStringLiteral("0")});
+        command({QStringLiteral("set"), QStringLiteral("contrast"), QStringLiteral("0")});
+        command({QStringLiteral("set"), QStringLiteral("saturation"), QStringLiteral("0")});
+        command({QStringLiteral("set"), QStringLiteral("gamma"), QStringLiteral("0")});
+        command({QStringLiteral("set"), QStringLiteral("video-rotate"), QStringLiteral("0")});
+        command({QStringLiteral("set"), QStringLiteral("video-aspect-override"), QStringLiteral("no")});
+    }
+    else if (name == QStringLiteral("zoom-in")) adjust(QStringLiteral("video-zoom"), 0.1);
+    else if (name == QStringLiteral("zoom-out")) adjust(QStringLiteral("video-zoom"), -0.1);
+    else if (name == QStringLiteral("pan-left")) adjust(QStringLiteral("video-pan-x"), -0.05);
+    else if (name == QStringLiteral("pan-right")) adjust(QStringLiteral("video-pan-x"), 0.05);
+    else if (name == QStringLiteral("pan-up")) adjust(QStringLiteral("video-pan-y"), -0.05);
+    else if (name == QStringLiteral("pan-down")) adjust(QStringLiteral("video-pan-y"), 0.05);
+    else if (name == QStringLiteral("reset-zoom")) {
+        command({QStringLiteral("set"), QStringLiteral("video-zoom"), QStringLiteral("0")});
+        command({QStringLiteral("set"), QStringLiteral("video-pan-x"), QStringLiteral("0")});
+        command({QStringLiteral("set"), QStringLiteral("video-pan-y"), QStringLiteral("0")});
+    }
+}
+
+void PlayerCore::adjust(const QString &property, double delta)
+{
+    static const QStringList allowed = {
+        QStringLiteral("sub-delay"), QStringLiteral("audio-delay"), QStringLiteral("sub-scale"),
+        QStringLiteral("sub-pos"), QStringLiteral("brightness"), QStringLiteral("contrast"),
+        QStringLiteral("saturation"), QStringLiteral("gamma"), QStringLiteral("video-zoom"),
+        QStringLiteral("video-pan-x"), QStringLiteral("video-pan-y")
+    };
+    if (!allowed.contains(property))
+        return;
+    command({QStringLiteral("add"), property, QString::number(delta, 'f', 3)});
+}
+
 void PlayerCore::setError(const QString &message)
 {
     m_error = message;
