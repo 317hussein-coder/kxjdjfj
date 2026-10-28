@@ -110,7 +110,7 @@ ApplicationWindow {
             from: 0
             to: Math.max(1, core.duration)
             value: Math.min(core.position, to)
-            onMoved: core.seekRelative(value - core.position)
+            onMoved: core.seekAbsolute(value)
         }
 
         RowLayout {
