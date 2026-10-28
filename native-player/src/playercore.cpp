@@ -3,6 +3,7 @@
 #include <QUrl>
 #include <QDebug>
 #include <QByteArray>
+#include <QStringList>
 #include <vector>
 
 PlayerCore::PlayerCore(QObject *parent) : QObject(parent)
