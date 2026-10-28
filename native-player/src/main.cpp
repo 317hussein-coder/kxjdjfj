@@ -1,6 +1,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QQuickWindow>
+#include <QSGRendererInterface>
 #include <QCoreApplication>
 #include <QUrl>
 #include "playercore.h"
@@ -8,6 +10,7 @@
 
 int main(int argc, char *argv[])
 {
+    QQuickWindow::setGraphicsApi(QSGRendererInterface::OpenGL);
     QGuiApplication app(argc, argv);
     QCoreApplication::setApplicationName(QStringLiteral("TatbiqYai Native"));
     QCoreApplication::setOrganizationName(QStringLiteral("TatbiqYai"));
