@@ -190,6 +190,80 @@ ApplicationWindow {
             }
         }
 
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 270
+            radius: 16
+            color: "#171622"
+            border.color: "#292638"
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 8
+                Label { text: "أدوات متقدمة — 30 ميزة إضافية"; color: "#e8e5f2"; font.pixelSize: 15; font.bold: true }
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+                    GridLayout {
+                        width: parent.width
+                        columns: 3
+                        rowSpacing: 6
+                        columnSpacing: 6
+                        Repeater {
+                            model: [
+                                {label:"كتم الصوت", action:"mute"},
+                                {label:"لقطة فيديو", action:"screenshot"},
+                                {label:"لقطة مع الترجمة", action:"screenshot-subtitles"},
+                                {label:"نسبة تلقائية", action:"aspect-auto"},
+                                {label:"نسبة 16:9", action:"aspect-16-9"},
+                                {label:"نسبة 4:3", action:"aspect-4-3"},
+                                {label:"تدوير 90°", action:"rotate"},
+                                {label:"إزالة التداخل", action:"deinterlace"},
+                                {label:"تكرار الفيديو", action:"loop"},
+                                {label:"التالي بالقائمة", action:"next"},
+                                {label:"السابق بالقائمة", action:"previous"},
+                                {label:"إطار للأمام", action:"frame-forward"},
+                                {label:"إطار للخلف", action:"frame-back"},
+                                {label:"تأخير الترجمة +", action:"subtitle-delay-plus"},
+                                {label:"تأخير الترجمة −", action:"subtitle-delay-minus"},
+                                {label:"تأخير الصوت +", action:"audio-delay-plus"},
+                                {label:"تأخير الصوت −", action:"audio-delay-minus"},
+                                {label:"تكبير الترجمة", action:"subtitle-size-plus"},
+                                {label:"تصغير الترجمة", action:"subtitle-size-minus"},
+                                {label:"الترجمة أعلى", action:"subtitle-up"},
+                                {label:"الترجمة أسفل", action:"subtitle-down"},
+                                {label:"سطوع +", action:"brightness-plus"},
+                                {label:"سطوع −", action:"brightness-minus"},
+                                {label:"تباين +", action:"contrast-plus"},
+                                {label:"تباين −", action:"contrast-minus"},
+                                {label:"تشبع +", action:"saturation-plus"},
+                                {label:"تشبع −", action:"saturation-minus"},
+                                {label:"جاما +", action:"gamma-plus"},
+                                {label:"جاما −", action:"gamma-minus"},
+                                {label:"إعادة الصورة", action:"reset-picture"},
+                                {label:"تكبير الصورة", action:"zoom-in"},
+                                {label:"تصغير الصورة", action:"zoom-out"},
+                                {label:"تحريك يسار", action:"pan-left"},
+                                {label:"تحريك يمين", action:"pan-right"},
+                                {label:"تحريك أعلى", action:"pan-up"},
+                                {label:"تحريك أسفل", action:"pan-down"},
+                                {label:"إعادة الزوم", action:"reset-zoom"}
+                            ]
+                            delegate: Button {
+                                required property var modelData
+                                Layout.fillWidth: true
+                                text: modelData.label
+                                onClicked: core.action(modelData.action)
+                                padding: 6
+                                font.pixelSize: 11
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         Label {
             Layout.fillWidth: true
             text: "يدعم المحرك الترجمات المحلية والصوت المتعدد والبحث الدقيق حسب قدرات libmpv المضمّنة."
