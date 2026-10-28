@@ -30,6 +30,16 @@ jobs:
           set -euo pipefail
           sdkmanager "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0"
 
+      - name: Install matching Qt desktop tools
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.2'
+          host: 'linux'
+          target: 'desktop'
+          arch: 'gcc_64'
+          modules: 'qtdeclarative qtshadertools'
+          cache: true
+
       - name: Install Qt for Android
         uses: jurplel/install-qt-action@v4
         with:
