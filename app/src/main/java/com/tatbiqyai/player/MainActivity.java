@@ -23,14 +23,19 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
+import androidx.media3.common.C;
+import androidx.media3.common.MediaItem.SubtitleConfiguration;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 import java.util.Locale;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MainActivity extends Activity {
     private static final int PICK_VIDEO = 71;
+    private static final int PICK_SUBTITLE = 72;
     private ExoPlayer player;
     private PlayerView playerView;
     private WebView webView;
@@ -40,6 +45,9 @@ public class MainActivity extends Activity {
     private TextToSpeech tts;
     private boolean ttsReady = false;
     private boolean fullscreen = false;
+    private Uri currentMediaUri;
+    private Uri externalSubtitleUri;
+    private final List<Uri> playlist = new ArrayList<>();
 
     @Override public void onCreate(@Nullable Bundle state) {
         super.onCreate(state);
@@ -103,14 +111,20 @@ public class MainActivity extends Activity {
 
         status = text("اختر فيديو أو أدخل رابطًا مباشرًا أو رابط يوتيوب",13,Color.rgb(0,212,177)); status.setGravity(Gravity.CENTER);
         root.addView(status,new LinearLayout.LayoutParams(-1,dp(40)));
-        Button pick = button("اختيار فيديو من الجهاز");
-        pick.setOnClickListener(v -> { Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.setType("video/*"); i.addCategory(Intent.CATEGORY_OPENABLE); startActivityForResult(i,PICK_VIDEO); });
+        Button pick = button("اختيار فيديوهات / قائمة تشغيل");
+        pick.setOnClickListener(v -> { Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.setType("video/*"); i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true); i.addCategory(Intent.CATEGORY_OPENABLE); startActivityForResult(i,PICK_VIDEO); });
         root.addView(pick,new LinearLayout.LayoutParams(-1,dp(48)));
 
         urlInput = new EditText(this); urlInput.setSingleLine(true); urlInput.setTextColor(Color.WHITE); urlInput.setHintTextColor(Color.GRAY);
         urlInput.setHint("رابط فيديو مباشر أو رابط YouTube"); urlInput.setTextSize(14); urlInput.setPadding(dp(12),0,dp(12),0);
         urlInput.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(124,77,255)));
         root.addView(urlInput,new LinearLayout.LayoutParams(-1,dp(52)));
+        Button subtitle = button("إضافة ملف ترجمة خارجي (SRT / VTT)");
+        subtitle.setOnClickListener(v -> { Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.setType("*/*"); i.addCategory(Intent.CATEGORY_OPENABLE); startActivityForResult(i,PICK_SUBTITLE); });
+        root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(44)));
+        Button next = button("الفيديو التالي في القائمة");
+        next.setOnClickListener(v -> playNext());
+        root.addView(next,new LinearLayout.LayoutParams(-1,dp(44)));
         Button playUrl = button("تشغيل الرابط");
         playUrl.setOnClickListener(v -> playUrl());
         root.addView(playUrl,new LinearLayout.LayoutParams(-1,dp(46)));
@@ -172,6 +186,15 @@ public class MainActivity extends Activity {
         // Explicit MIME types make streaming links more reliable when the URL has query parameters.
         if (path.endsWith(".m3u8")) builder.setMimeType(MimeTypes.APPLICATION_M3U8);
         else if (path.endsWith(".mpd")) builder.setMimeType(MimeTypes.APPLICATION_MPD);
+        if (externalSubtitleUri != null) {
+            String subtitlePath = externalSubtitleUri.getLastPathSegment() == null ? "" : externalSubtitleUri.getLastPathSegment().toLowerCase(Locale.ROOT);
+            String subtitleMime = subtitlePath.endsWith(".vtt") ? MimeTypes.TEXT_VTT :
+                    (subtitlePath.endsWith(".ssa") || subtitlePath.endsWith(".ass")) ? MimeTypes.TEXT_SSA :
+                    MimeTypes.APPLICATION_SUBRIP;
+            SubtitleConfiguration subtitle = new SubtitleConfiguration.Builder(externalSubtitleUri)
+                    .setMimeType(subtitleMime).setLanguage("ar").setSelectionFlags(C.SELECTION_FLAG_DEFAULT).build();
+            builder.setSubtitleConfigurations(java.util.Collections.singletonList(subtitle));
+        }
         return builder.build();
     }
 
@@ -197,6 +220,8 @@ public class MainActivity extends Activity {
             return;
         }
         Uri uri=Uri.parse(url);
+        currentMediaUri = uri;
+        playlist.clear(); playlist.add(uri);
         String path=uri.getPath()==null?"":uri.getPath().toLowerCase(Locale.ROOT);
         boolean looksLikeDirectMedia=path.matches(".*\\.(mp4|m4v|webm|mkv|mp3|m4a|aac|ogg|wav|flac|m3u8|mpd)(?:$|/).*");
         if(!looksLikeDirectMedia && (uri.getHost()!=null)) {
@@ -206,6 +231,12 @@ public class MainActivity extends Activity {
         playerView.setVisibility(View.VISIBLE);
         try { player.setMediaItem(buildMediaItem(uri)); player.prepare(); player.play(); status.setText("جارٍ فتح الرابط…"); }
         catch (Exception e) { status.setText("الرابط غير صالح"); }
+    }
+
+    private void playNext() {
+        if (player != null && player.hasNextMediaItem()) {
+            player.seekToNextMediaItem(); player.play(); status.setText("جارٍ تشغيل الفيديو التالي");
+        } else Toast.makeText(this, "لا يوجد فيديو تالٍ. اختر عدة فيديوهات لإنشاء قائمة تشغيل.", Toast.LENGTH_LONG).show();
     }
 
     private void speakArabic() {
@@ -233,11 +264,35 @@ public class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int requestCode,int resultCode,@Nullable Intent data) {
         super.onActivityResult(requestCode,resultCode,data);
-        if(requestCode==PICK_VIDEO && resultCode==Activity.RESULT_OK && data!=null && data.getData()!=null) {
-            Uri uri=data.getData();
-            try { getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
-            webView.setVisibility(View.GONE); playerView.setVisibility(View.VISIBLE);
-            player.setMediaItem(buildMediaItem(uri)); player.prepare(); player.play(); status.setText("تم اختيار الفيديو");
+        if(resultCode != Activity.RESULT_OK || data == null) return;
+        if(requestCode == PICK_SUBTITLE && data.getData() != null) {
+            externalSubtitleUri = data.getData();
+            try { getContentResolver().takePersistableUriPermission(externalSubtitleUri, Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
+            if(currentMediaUri != null) {
+                try { player.setMediaItem(buildMediaItem(currentMediaUri), false); player.prepare(); player.play(); status.setText("تمت إضافة الترجمة الخارجية"); }
+                catch(Exception e) { status.setText("تعذرت إضافة الترجمة لهذا الملف"); }
+            } else Toast.makeText(this, "تم اختيار الترجمة. افتح الفيديو لإرفاقها به.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        if(requestCode == PICK_VIDEO) {
+            playlist.clear();
+            if(data.getClipData() != null) {
+                for(int i=0;i<data.getClipData().getItemCount();i++) {
+                    Uri uri=data.getClipData().getItemAt(i).getUri(); playlist.add(uri);
+                    try { getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
+                }
+            } else if(data.getData()!=null) {
+                Uri uri=data.getData(); playlist.add(uri);
+                try { getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
+            }
+            if(!playlist.isEmpty()) {
+                currentMediaUri=playlist.get(0);
+                webView.setVisibility(View.GONE); playerView.setVisibility(View.VISIBLE);
+                List<MediaItem> items=new ArrayList<>();
+                for(Uri uri:playlist) items.add(buildMediaItem(uri));
+                player.setMediaItems(items,0,0); player.prepare(); player.play();
+                status.setText("قائمة تشغيل: "+playlist.size()+" فيديو");
+            }
         }
     }
     @Override protected void onPause() { super.onPause(); if(webView!=null) webView.onPause(); }
