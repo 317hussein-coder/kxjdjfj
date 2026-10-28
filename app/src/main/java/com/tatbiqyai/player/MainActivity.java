@@ -11,9 +11,6 @@ import android.speech.tts.TextToSpeech;
 import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -41,7 +38,6 @@ public class MainActivity extends Activity {
     private static final int PICK_SUBTITLE = 72;
     private ExoPlayer player;
     private PlayerView playerView;
-    private WebView webView;
     private TextView status;
     private EditText urlInput, speechInput;
     private LinearLayout root;
@@ -62,7 +58,7 @@ public class MainActivity extends Activity {
         playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int playbackState) {
-                if (status == null || webView.getVisibility() == View.VISIBLE) return;
+                if (status == null) return;
                 if (playbackState == Player.STATE_BUFFERING) status.setText("جارٍ تحميل الفيديو…");
                 else if (playbackState == Player.STATE_READY) status.setText("الفيديو جاهز للتشغيل");
                 else if (playbackState == Player.STATE_ENDED) status.setText("انتهى الفيديو");
@@ -124,10 +120,6 @@ public class MainActivity extends Activity {
         LinearLayout playerCard=column(); playerCard.setPadding(dp(7),dp(7),dp(7),dp(10)); playerCard.setBackground(shape(Color.rgb(27,26,40),20));
         playerView=new PlayerView(this); playerView.setUseController(true); playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_ALWAYS); playerView.setBackground(shape(Color.BLACK,15));
         playerCard.addView(playerView,new LinearLayout.LayoutParams(-1,dp(224)));
-        webView=new WebView(this); webView.setBackgroundColor(Color.BLACK);
-        WebSettings ws=webView.getSettings(); ws.setJavaScriptEnabled(true); ws.setDomStorageEnabled(true); ws.setMediaPlaybackRequiresUserGesture(true); ws.setAllowFileAccess(false); ws.setAllowContentAccess(false);
-        webView.setWebChromeClient(new WebChromeClient()); webView.setVisibility(View.GONE);
-        playerCard.addView(webView,new LinearLayout.LayoutParams(-1,dp(224)));
         status=text("جاهز — اختر فيديو من جهازك أو ألصق رابطًا مباشرًا",12,Color.rgb(0,218,183)); status.setGravity(Gravity.CENTER); status.setPadding(dp(5),dp(9),dp(5),dp(2));
         playerCard.addView(status,new LinearLayout.LayoutParams(-1,-2));
         LinearLayout.LayoutParams pp=new LinearLayout.LayoutParams(-1,-2); pp.bottomMargin=dp(14); page.addView(playerCard,pp);
@@ -224,18 +216,14 @@ public class MainActivity extends Activity {
         }
         String videoId=youtubeId(url);
         if(videoId!=null) {
-            player.pause();
-            playerView.setVisibility(View.GONE);
-            webView.setVisibility(View.VISIBLE);
-            String html="<!doctype html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"+
-                "<style>html,body{margin:0;padding:0;background:#000;width:100%;height:100%;}"+
-                ".frame{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}"+
-                "iframe{width:100%;height:100%;border:0;}</style></head><body><div class=\"frame\">"+
-                "<iframe src=\"https://www.youtube-nocookie.com/embed/"+videoId+"?playsinline=1&autoplay=1\" "+
-                "title=\"YouTube video player\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" allowfullscreen></iframe>"+
-                "</div></body></html>";
-            webView.loadDataWithBaseURL("https://tatbiqyai.app/",html,"text/html","UTF-8",null);
-            status.setText("تشغيل الفيديو داخل مشغّل YouTube الرسمي");
+            try {
+                Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse("https://www.youtube.com/watch?v="+videoId));
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                status.setText("فُتح YouTube الرسمي. المشغّل الداخلي مخصص للملفات وروابط البث المباشر.");
+            } catch(Exception e) {
+                status.setText("تعذّر فتح تطبيق YouTube");
+            }
             return;
         }
         Uri uri=Uri.parse(url);
@@ -246,8 +234,6 @@ public class MainActivity extends Activity {
         if(!looksLikeDirectMedia && (uri.getHost()!=null)) {
             Toast.makeText(this,"هذا رابط صفحة ويب وليس ملف فيديو مباشر. يدعم التطبيق حاليًا YouTube المضمّن والملفات المباشرة؛ المواقع الأخرى قد تحتاج مشغّلها الرسمي.",Toast.LENGTH_LONG).show();
         }
-        webView.setVisibility(View.GONE);
-        playerView.setVisibility(View.VISIBLE);
         try { player.setMediaItem(buildMediaItem(uri)); player.prepare(); player.play(); status.setText("جارٍ فتح الرابط…"); }
         catch (Exception e) { status.setText("الرابط غير صالح"); }
     }
@@ -306,7 +292,6 @@ public class MainActivity extends Activity {
             }
             if(!playlist.isEmpty()) {
                 currentMediaUri=playlist.get(0);
-                webView.setVisibility(View.GONE); playerView.setVisibility(View.VISIBLE);
                 List<MediaItem> items=new ArrayList<>();
                 for(Uri uri:playlist) items.add(buildMediaItem(uri));
                 player.setMediaItems(items,0,0); player.prepare(); player.play();
@@ -314,11 +299,10 @@ public class MainActivity extends Activity {
             }
         }
     }
-    @Override protected void onPause() { super.onPause(); if(webView!=null) webView.onPause(); }
-    @Override protected void onResume() { super.onResume(); if(webView!=null) webView.onResume(); }
+    @Override protected void onPause() { super.onPause(); }
+    @Override protected void onResume() { super.onResume(); }
     @Override protected void onDestroy() {
         if(player!=null){player.release();player=null;}
-        if(webView!=null){webView.loadUrl("about:blank");webView.destroy();webView=null;}
         if(tts!=null){tts.stop();tts.shutdown();tts=null;}
         super.onDestroy();
     }
