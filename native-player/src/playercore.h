@@ -43,6 +43,8 @@ public:
     Q_INVOKABLE void setVolume(double value);
     Q_INVOKABLE void setSpeed(double value);
     Q_INVOKABLE void pollEvents();
+    Q_INVOKABLE void action(const QString &name);
+    Q_INVOKABLE void adjust(const QString &property, double delta);
 
 signals:
     void readyChanged();
