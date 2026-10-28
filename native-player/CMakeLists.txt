@@ -28,14 +28,15 @@ qt_add_executable(tatbiqyai-native
   src/mpvrenderitem.h
 )
 
+qt_add_qml_module(tatbiqyai-native
+  URI TatbiqYai.NativeApp
+  VERSION 1.0
+  QML_FILES qml/Main.qml
+)
+
 target_include_directories(tatbiqyai-native PRIVATE "${MPV_INCLUDE_DIR}")
 target_link_libraries(tatbiqyai-native PRIVATE
   Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2 "${MPV_LIBRARY}"
-)
-
-qt_add_resources(tatbiqyai-native "qml_resources"
-  PREFIX "/qt/qml"
-  FILES qml/Main.qml
 )
 
 set_target_properties(tatbiqyai-native PROPERTIES
