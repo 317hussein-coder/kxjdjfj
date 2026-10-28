@@ -67,11 +67,20 @@ jobs:
           ls -lh native-player/third_party/mpv/lib/arm64-v8a
 
       - name: Configure Qt Android build
+        shell: bash
         run: |
           set -euo pipefail
           echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
           echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
-          "$QT_ROOT_DIR/bin/qt-cmake"             -S native-player             -B build-native             -DCMAKE_BUILD_TYPE=Release             -DANDROID_ABI=arm64-v8a             -DANDROID_PLATFORM=android-28             -DANDROID_SDK_ROOT="$ANDROID_HOME"             -DANDROID_NDK_ROOT="$ANDROID_HOME/ndk/27.2.12479018"
+          "$QT_ROOT_DIR/bin/qt-cmake" \
+            -S native-player \
+            -B build-native \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-28 \
+            -DANDROID_SDK_ROOT="$ANDROID_HOME" \
+            -DANDROID_NDK_ROOT="$ANDROID_HOME/ndk/27.2.12479018" \
+            -DQT_HOST_PATH="$QT_HOST_PATH"
 
       - name: Compile C++ and package APK
         run: |
