@@ -20,6 +20,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.media3.common.MediaItem;
+import androidx.media3.common.MimeTypes;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
@@ -165,6 +166,15 @@ public class MainActivity extends Activity {
         return null;
     }
 
+    private MediaItem buildMediaItem(Uri uri) {
+        String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase(Locale.ROOT);
+        MediaItem.Builder builder = new MediaItem.Builder().setUri(uri);
+        // Explicit MIME types make streaming links more reliable when the URL has query parameters.
+        if (path.endsWith(".m3u8")) builder.setMimeType(MimeTypes.APPLICATION_M3U8);
+        else if (path.endsWith(".mpd")) builder.setMimeType(MimeTypes.APPLICATION_MPD);
+        return builder.build();
+    }
+
     private void playUrl() {
         String url=urlInput.getText().toString().trim();
         if (!(url.startsWith("https://") || url.startsWith("http://"))) {
@@ -194,7 +204,7 @@ public class MainActivity extends Activity {
         }
         webView.setVisibility(View.GONE);
         playerView.setVisibility(View.VISIBLE);
-        try { player.setMediaItem(MediaItem.fromUri(uri)); player.prepare(); player.play(); status.setText("جارٍ فتح الرابط…"); }
+        try { player.setMediaItem(buildMediaItem(uri)); player.prepare(); player.play(); status.setText("جارٍ فتح الرابط…"); }
         catch (Exception e) { status.setText("الرابط غير صالح"); }
     }
 
@@ -227,7 +237,7 @@ public class MainActivity extends Activity {
             Uri uri=data.getData();
             try { getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION); } catch (SecurityException ignored) {}
             webView.setVisibility(View.GONE); playerView.setVisibility(View.VISIBLE);
-            player.setMediaItem(MediaItem.fromUri(uri)); player.prepare(); player.play(); status.setText("تم اختيار الفيديو");
+            player.setMediaItem(buildMediaItem(uri)); player.prepare(); player.play(); status.setText("تم اختيار الفيديو");
         }
     }
     @Override protected void onPause() { super.onPause(); if(webView!=null) webView.onPause(); }
