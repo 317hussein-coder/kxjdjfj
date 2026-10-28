@@ -31,11 +31,23 @@ jobs:
           set -euo pipefail
           sdkmanager "ndk;27.2.12479018" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Install Qt for Android
+      # Qt 6.7+ Android packages are published under host "all_os", not "linux".
+      # Qt Android builds also require the matching Linux desktop Qt tools.
+      - name: Install Qt desktop tools
         uses: jurplel/install-qt-action@v4
         with:
           version: '6.8.3'
           host: 'linux'
+          target: 'desktop'
+          arch: 'gcc_64'
+          modules: 'qtdeclarative qtshadertools'
+          cache: true
+
+      - name: Install Qt for Android
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: 'all_os'
           target: 'android'
           arch: 'android_arm64_v8a'
           modules: 'qtdeclarative qtshadertools'
