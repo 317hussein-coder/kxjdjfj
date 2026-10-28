@@ -12,6 +12,7 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
 set(MPV_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/mpv" CACHE PATH "libmpv Android package root")
 find_path(MPV_INCLUDE_DIR mpv/client.h PATHS "${MPV_ROOT}/include" NO_DEFAULT_PATH)
 find_library(MPV_LIBRARY NAMES mpv libmpv PATHS "${MPV_ROOT}/lib/${ANDROID_ABI}" NO_DEFAULT_PATH)
+file(GLOB MPV_ANDROID_LIBS CONFIGURE_DEPENDS "${MPV_ROOT}/lib/${ANDROID_ABI}/*.so")
 
 if(NOT MPV_INCLUDE_DIR OR NOT MPV_LIBRARY)
   message(FATAL_ERROR
@@ -42,4 +43,5 @@ set_target_properties(tatbiqyai-native PROPERTIES
   QT_ANDROID_PACKAGE_NAME "com.tatbiqyai.nativeplayer"
   QT_ANDROID_MIN_SDK_VERSION 26
   QT_ANDROID_TARGET_SDK_VERSION 35
+  QT_ANDROID_EXTRA_LIBS "${MPV_ANDROID_LIBS}"
 )
