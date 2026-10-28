@@ -1,11 +1,9 @@
 #include "playercore.h"
 
-#include <QFileInfo>
 #include <QUrl>
-#include <QMetaObject>
-#include <QThread>
 #include <QDebug>
-#include <cstring>
+#include <QByteArray>
+#include <vector>
 
 PlayerCore::PlayerCore(QObject *parent) : QObject(parent)
 {
@@ -15,7 +13,6 @@ PlayerCore::PlayerCore(QObject *parent) : QObject(parent)
         return;
     }
 
-    // The Qt Quick render item uses mpv's OpenGL render API.
     mpv_set_option_string(m_mpv, "vo", "libmpv");
     mpv_set_option_string(m_mpv, "terminal", "no");
     mpv_set_option_string(m_mpv, "input-default-bindings", "no");
@@ -54,15 +51,16 @@ bool PlayerCore::command(const QVariantList &args)
 {
     if (!m_mpv || args.isEmpty())
         return false;
-    QByteArrayList encoded;
+    std::vector<QByteArray> encoded;
+    encoded.reserve(static_cast<size_t>(args.size()));
     for (const QVariant &arg : args)
-        encoded.append(arg.toString().toUtf8());
-    QVector<const char *> cargs;
+        encoded.push_back(arg.toString().toUtf8());
+    std::vector<const char *> cargs;
     cargs.reserve(encoded.size() + 1);
     for (const QByteArray &arg : encoded)
-        cargs.append(arg.constData());
-    cargs.append(nullptr);
-    const int result = mpv_command(m_mpv, cargs.constData());
+        cargs.push_back(arg.constData());
+    cargs.push_back(nullptr);
+    const int result = mpv_command(m_mpv, cargs.data());
     if (result < 0) {
         setError(QString::fromUtf8(mpv_error_string(result)));
         return false;
@@ -76,11 +74,7 @@ bool PlayerCore::open(const QUrl &url)
         setError(QStringLiteral("اختر ملف فيديو أو رابطًا صالحًا."));
         return false;
     }
-    QString target;
-    if (url.isLocalFile())
-        target = url.toLocalFile();
-    else
-        target = url.toString(QUrl::FullyEncoded);
+    const QString target = url.isLocalFile() ? url.toLocalFile() : url.toString(QUrl::FullyEncoded);
     m_error.clear();
     emit errorChanged();
     return command({QStringLiteral("loadfile"), target, QStringLiteral("replace")});
@@ -89,6 +83,9 @@ bool PlayerCore::open(const QUrl &url)
 void PlayerCore::togglePause() { command({QStringLiteral("cycle"), QStringLiteral("pause")}); }
 void PlayerCore::seekRelative(double seconds) {
     command({QStringLiteral("seek"), QString::number(seconds, 'f', 3), QStringLiteral("relative+exact")});
+}
+void PlayerCore::seekAbsolute(double seconds) {
+    command({QStringLiteral("seek"), QString::number(qMax(0.0, seconds), 'f', 3), QStringLiteral("absolute+exact")});
 }
 void PlayerCore::stop() { command({QStringLiteral("stop")}); }
 
@@ -137,8 +134,7 @@ void PlayerCore::pollEvents()
             const QString name = QString::fromUtf8(property->name);
             if (name == QStringLiteral("pause") && property->format == MPV_FORMAT_FLAG && property->data) {
                 const bool paused = *static_cast<int *>(property->data) != 0;
-                if (m_playing == !paused) continue;
-                m_playing = !paused; emit playingChanged();
+                if (m_playing != !paused) { m_playing = !paused; emit playingChanged(); }
             } else if (name == QStringLiteral("time-pos") && property->format == MPV_FORMAT_DOUBLE && property->data) {
                 m_position = *static_cast<double *>(property->data); emit positionChanged();
             } else if (name == QStringLiteral("duration") && property->format == MPV_FORMAT_DOUBLE && property->data) {
