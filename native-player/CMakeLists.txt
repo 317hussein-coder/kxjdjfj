@@ -28,6 +28,8 @@ qt_add_executable(tatbiqyai-native
   src/mpvrenderitem.h
 )
 
+set_source_files_properties(qml/Main.qml PROPERTIES QT_RESOURCE_ALIAS Main.qml)
+
 qt_add_qml_module(tatbiqyai-native
   URI TatbiqYai.NativeApp
   VERSION 1.0
