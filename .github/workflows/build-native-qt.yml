@@ -1,0 +1,79 @@
+name: Build Native Qt6 libmpv APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'native-player/**'
+      - '.github/workflows/build-native-qt.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-arm64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Android SDK and NDK
+        uses: android-actions/setup-android@v3
+      - name: Install NDK
+        run: sdkmanager "ndk;27.2.12479018" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install Qt for Android
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          host: 'linux'
+          target: 'android'
+          arch: 'android_arm64_v8a'
+          modules: 'qtdeclarative qtshadertools'
+          cache: true
+
+      - name: Prepare libmpv headers and Android shared libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p native-player/third_party/mpv/include/mpv native-player/third_party/mpv/lib/arm64-v8a
+          git clone --filter=blob:none https://github.com/mpv-player/mpv.git /tmp/mpv-src
+          git -C /tmp/mpv-src checkout 0b7ed67
+          cp /tmp/mpv-src/libmpv/*.h native-player/third_party/mpv/include/mpv/
+          curl -fL --retry 3             https://github.com/mpv-android/mpv-android/releases/download/2026-09-17/app-default-arm64-v8a-release.apk             -o /tmp/mpv-android.apk
+          mkdir -p /tmp/mpv-apk
+          unzip -q /tmp/mpv-android.apk 'lib/arm64-v8a/*.so' -d /tmp/mpv-apk
+          find /tmp/mpv-apk/lib/arm64-v8a -maxdepth 1 -name '*.so' -exec cp {} native-player/third_party/mpv/lib/arm64-v8a/ \;
+          test -f native-player/third_party/mpv/lib/arm64-v8a/libmpv.so || {
+            echo "::error::The selected upstream APK does not contain libmpv.so at the expected path."
+            find /tmp/mpv-apk -maxdepth 4 -type f
+            exit 1
+          }
+          echo "Native lib files found:"
+          ls -lh native-player/third_party/mpv/lib/arm64-v8a
+
+      - name: Configure Qt Android build
+        run: |
+          set -euo pipefail
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+          "$QT_ROOT_DIR/bin/qt-cmake"             -S native-player             -B build-native             -DCMAKE_BUILD_TYPE=Release             -DANDROID_ABI=arm64-v8a             -DANDROID_PLATFORM=android-26             -DANDROID_SDK_ROOT="$ANDROID_HOME"             -DANDROID_NDK_ROOT="$ANDROID_HOME/ndk/27.2.12479018"
+
+      - name: Compile C++ and package APK
+        run: |
+          set -euo pipefail
+          cmake --build build-native --parallel 2
+          find build-native -type f -name '*.apk' -print
+          APK="$(find build-native -type f -name '*.apk' | head -n 1)"
+          test -n "$APK" || { echo "::error::Build completed without producing an APK."; exit 1; }
+          mkdir -p dist
+          cp "$APK" dist/TatbiqYai-Native-arm64-v8a-debug.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TatbiqYai-Native-Qt6-libmpv-arm64
+          path: dist/TatbiqYai-Native-arm64-v8a-debug.apk
+          if-no-files-found: error
+          retention-days: 14
