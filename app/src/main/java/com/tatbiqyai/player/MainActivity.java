@@ -216,14 +216,10 @@ public class MainActivity extends Activity {
         }
         String videoId=youtubeId(url);
         if(videoId!=null) {
-            try {
-                Intent intent=new Intent(Intent.ACTION_VIEW,Uri.parse("https://www.youtube.com/watch?v="+videoId));
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                status.setText("فُتح YouTube الرسمي. المشغّل الداخلي مخصص للملفات وروابط البث المباشر.");
-            } catch(Exception e) {
-                status.setText("تعذّر فتح تطبيق YouTube");
-            }
+            Toast.makeText(this,
+                "هذا الإصدار لا يشغّل صفحات YouTube داخليًا. استخدم إصدار المشغّل الأصلي libmpv؛ لا ينبغي تحويلك إلى تطبيق YouTube.",
+                Toast.LENGTH_LONG).show();
+            status.setText("رابط YouTube يحتاج استخراج بث متوافق مع المحرك الأصلي.");
             return;
         }
         Uri uri=Uri.parse(url);
