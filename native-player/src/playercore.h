@@ -3,6 +3,7 @@
 #include <QObject>
 #include <QString>
 #include <QVariant>
+#include <QUrl>
 #include <mpv/client.h>
 
 class PlayerCore final : public QObject
@@ -34,6 +35,7 @@ public:
     Q_INVOKABLE bool open(const QUrl &url);
     Q_INVOKABLE void togglePause();
     Q_INVOKABLE void seekRelative(double seconds);
+    Q_INVOKABLE void seekAbsolute(double seconds);
     Q_INVOKABLE void stop();
     Q_INVOKABLE void setSubtitleFile(const QUrl &url);
     Q_INVOKABLE void cycleAudioTrack();
