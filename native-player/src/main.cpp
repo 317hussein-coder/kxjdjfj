@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     qmlRegisterType<PlayerCore>("TatbiqYai.Native", 1, 0, "PlayerCore");
 
     QQmlApplicationEngine engine;
-    const QUrl url(QStringLiteral("qrc:/qt/qml/qml/Main.qml"));
+    const QUrl url(QStringLiteral("qrc:/qt/qml/TatbiqYai/NativeApp/Main.qml"));
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreated,
                      &app, [url](QObject *obj, const QUrl &objUrl) {
         if (!obj && url == objUrl)
