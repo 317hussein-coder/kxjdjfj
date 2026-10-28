@@ -1,0 +1,11 @@
+cmake_minimum_required(VERSION 3.22.1)
+project(my_media_see LANGUAGES C CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+add_library(app_glue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
+target_include_directories(app_glue PUBLIC ${ANDROID_NDK}/sources/android/native_app_glue)
+add_library(main SHARED src/main/cpp/main.cpp)
+target_compile_options(main PRIVATE -Wall -Wextra -Werror=return-type)
+target_link_libraries(main PRIVATE app_glue android log mediandk)
