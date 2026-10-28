@@ -119,9 +119,9 @@ public class MainActivity extends Activity {
         urlInput.setHint("رابط فيديو مباشر أو رابط YouTube"); urlInput.setTextSize(14); urlInput.setPadding(dp(12),0,dp(12),0);
         urlInput.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.rgb(124,77,255)));
         root.addView(urlInput,new LinearLayout.LayoutParams(-1,dp(52)));
-        Button subtitle = button("إضافة ملف ترجمة خارجي (SRT / VTT)");
-        subtitle.setOnClickListener(v -> { Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.setType("*/*"); i.addCategory(Intent.CATEGORY_OPENABLE); startActivityForResult(i,PICK_SUBTITLE); });
-        root.addView(subtitle,new LinearLayout.LayoutParams(-1,dp(44)));
+        Button subtitleButton = button("إضافة ملف ترجمة خارجي (SRT / VTT)");
+        subtitleButton.setOnClickListener(v -> { Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.setType("*/*"); i.addCategory(Intent.CATEGORY_OPENABLE); startActivityForResult(i,PICK_SUBTITLE); });
+        root.addView(subtitleButton,new LinearLayout.LayoutParams(-1,dp(44)));
         Button next = button("الفيديو التالي في القائمة");
         next.setOnClickListener(v -> playNext());
         root.addView(next,new LinearLayout.LayoutParams(-1,dp(44)));
