@@ -104,6 +104,33 @@ ApplicationWindow {
             elide: Text.ElideMiddle
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            TextField {
+                id: urlField
+                Layout.fillWidth: true
+                placeholderText: "ألصق رابط فيديو مباشر أو رابط منصة"
+                inputMethodHints: Qt.ImhUrlCharactersOnly
+                onAccepted: {
+                    if (text.trim().length > 0) {
+                        core.open(text.trim())
+                        Qt.inputMethod.hide()
+                    }
+                }
+            }
+            Button {
+                text: "فتح الرابط"
+                highlighted: true
+                onClicked: {
+                    if (urlField.text.trim().length > 0) {
+                        core.open(urlField.text.trim())
+                        Qt.inputMethod.hide()
+                    }
+                }
+            }
+        }
+
         Slider {
             id: seekSlider
             Layout.fillWidth: true
