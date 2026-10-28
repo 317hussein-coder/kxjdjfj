@@ -23,6 +23,10 @@ PlayerCore::PlayerCore(QObject *parent) : QObject(parent)
     mpv_set_option_string(m_mpv, "alang", "ar,ara,en");
     mpv_set_option_string(m_mpv, "slang", "ar,ara,en");
     mpv_set_option_string(m_mpv, "keep-open", "yes");
+    mpv_set_option_string(m_mpv, "ytdl", "yes");
+    mpv_set_option_string(m_mpv, "cache", "yes");
+    mpv_set_option_string(m_mpv, "demuxer-readahead-secs", "20");
+    mpv_set_option_string(m_mpv, "demuxer-max-bytes", "150MiB");
 
     const int result = mpv_initialize(m_mpv);
     if (result < 0) {
