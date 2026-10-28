@@ -1,13 +1,9 @@
 #include <android_native_app_glue.h>
 #include <android/log.h>
 #include <android/native_window.h>
-#include <android/native_window_jni.h>
 #include <NdkMediaPlayer.h>
 #include <jni.h>
-#include <atomic>
 #include <string>
-#include <thread>
-#include <chrono>
 
 #define LOG_TAG "MyMediaSee"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -45,7 +41,7 @@ static std::string intentData(android_app* app) {
             auto str = static_cast<jstring>(toString ? env->CallObjectMethod(uri, toString) : nullptr);
             if (str) {
                 const char* chars = env->GetStringUTFChars(str, nullptr);
-                if (chars) { result = chars; env->ReleaseStringUTFChars(str, chars); }
+                if (chars) { result.assign(chars); env->ReleaseStringUTFChars(str, chars); }
                 env->DeleteLocalRef(str);
             }
             env->DeleteLocalRef(uri);
@@ -61,6 +57,7 @@ static std::string intentData(android_app* app) {
 
 static void stopPlayer(State* s) {
     if (s->player) {
+        AMediaPlayer_setListener(s->player, nullptr, nullptr);
         AMediaPlayer_stop(s->player);
         AMediaPlayer_setSurface(s->player, nullptr);
         AMediaPlayer_delete(s->player);
@@ -69,28 +66,57 @@ static void stopPlayer(State* s) {
     s->prepared = false;
     s->playing = false;
 }
+
+static void playerEvent(AMediaPlayer* player, void* user, media_player_states event, int32_t, int32_t) {
+    auto* s = static_cast<State*>(user);
+    if (!s) return;
+    if (event == MEDIA_PLAYER_PREPARED) {
+        s->prepared = true;
+        if (s->window) AMediaPlayer_setSurface(player, s->window);
+        const auto result = AMediaPlayer_start(player);
+        s->playing = result == AMEDIA_OK;
+        LOGI("Prepared media; start status=%d", static_cast<int>(result));
+    } else if (event == MEDIA_PLAYER_PLAYBACK_COMPLETE) {
+        s->playing = false;
+        LOGI("Playback completed");
+    } else if (event == MEDIA_PLAYER_ERROR) {
+        s->playing = false;
+        LOGE("Media playback error");
+    }
+}
+
 static void startSource(State* s, const std::string& uri) {
     stopPlayer(s);
     s->source = uri;
     if (uri.empty()) {
-        LOGI("Open a direct media URL using Android Share/Open with MY MEDIA SEE.");
+        LOGI("Open a direct HTTP/HTTPS media URL with Android Open with / Share to MY MEDIA SEE.");
         return;
     }
     s->player = AMediaPlayer_new();
     if (!s->player) { LOGE("AMediaPlayer_new failed"); return; }
-    if (s->window) AMediaPlayer_setSurface(s->player, ANativeWindow_toSurface(nullptr, s->window));
-    AMediaPlayer_setDataSource(s->player, uri.c_str());
-    AMediaPlayer_prepareAsync(s->player);
-    LOGI("Preparing media URI: %s", uri.c_str());
+    if (s->window) AMediaPlayer_setSurface(s->player, s->window);
+    AMediaPlayer_setListener(s->player, playerEvent, s);
+    media_status_t status = AMediaPlayer_setDataSource(s->player, uri.c_str());
+    if (status != AMEDIA_OK) {
+        LOGE("setDataSource failed: %d", static_cast<int>(status));
+        stopPlayer(s);
+        return;
+    }
+    status = AMediaPlayer_prepareAsync(s->player);
+    if (status != AMEDIA_OK) {
+        LOGE("prepareAsync failed: %d", static_cast<int>(status));
+        stopPlayer(s);
+    } else {
+        LOGI("Preparing URI");
+    }
 }
+
 static void onCmd(android_app* app, int32_t cmd) {
     auto* s = static_cast<State*>(app->userData);
     if (!s) return;
     if (cmd == APP_CMD_INIT_WINDOW && app->window) {
         s->window = app->window;
-        if (s->player) AMediaPlayer_setSurface(s->player, nullptr);
-        if (!s->source.empty()) startSource(s, s->source);
-        else s->source = intentData(app);
+        if (s->source.empty()) s->source = intentData(app);
         if (!s->source.empty()) startSource(s, s->source);
     } else if (cmd == APP_CMD_TERM_WINDOW) {
         s->window = nullptr;
@@ -99,27 +125,22 @@ static void onCmd(android_app* app, int32_t cmd) {
         stopPlayer(s);
     }
 }
+
 static int32_t onInput(android_app* app, AInputEvent* event) {
     auto* s = static_cast<State*>(app->userData);
     if (!s || AInputEvent_getType(event) != AINPUT_EVENT_TYPE_MOTION) return 0;
     if (AMotionEvent_getAction(event) == AMOTION_EVENT_ACTION_UP && s->player && s->prepared) {
-        if (s->playing) { AMediaPlayer_pause(s->player); s->playing = false; }
-        else { AMediaPlayer_start(s->player); s->playing = true; }
+        if (s->playing) {
+            AMediaPlayer_pause(s->player);
+            s->playing = false;
+        } else {
+            s->playing = AMediaPlayer_start(s->player) == AMEDIA_OK;
+        }
         return 1;
     }
     return 0;
 }
-static void onPrepared(AMediaPlayer* player, void* user) {
-    auto* s = static_cast<State*>(user);
-    if (!s) return;
-    s->prepared = true;
-    AMediaPlayer_start(player);
-    s->playing = true;
-    LOGI("Playback started");
-}
-static void onError(AMediaPlayer*, media_status_t, int, int, void*) {
-    LOGE("Media error. This source or codec may not be supported by the device.");
-}
+
 void android_main(android_app* app) {
     app_dummy();
     State state;
@@ -130,9 +151,12 @@ void android_main(android_app* app) {
     while (!app->destroyRequested) {
         int events = 0;
         android_poll_source* source = nullptr;
-        while (ALooper_pollOnce(state.player ? 100 : -1, nullptr, &events, reinterpret_cast<void**>(&source)) >= 0) {
+        const int timeout = state.player ? 100 : -1;
+        int ident = ALooper_pollOnce(timeout, nullptr, &events, reinterpret_cast<void**>(&source));
+        while (ident >= 0) {
             if (source) source->process(app, source);
             if (app->destroyRequested) break;
+            ident = ALooper_pollOnce(0, nullptr, &events, reinterpret_cast<void**>(&source));
         }
     }
     stopPlayer(&state);
